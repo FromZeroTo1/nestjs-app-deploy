@@ -1,0 +1,264 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Promocode {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  description String
+  code        String
+
+  user   User? @relation(fields: [userId], references: [id])
+  userId Int?  @map("user_id")
+}
+
+model Card {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  bankName       String? @map("bank_name")
+  cardNumber     String  @unique @map("card_number")
+  expirationDate String  @map("expiration_date")
+  holderName     String  @map("holder_name")
+  cvv            String
+  isDefault      Boolean @default(false) @map("is_default")
+
+  user   User? @relation(fields: [userId], references: [id])
+  userId Int?  @map("user_id")
+}
+
+model Address {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  city        String
+  street      String
+  house       String
+  houseBody   String? @map("house_body")
+  apartment   String
+  information String?
+
+  user   User? @relation(fields: [userId], references: [id])
+  userId Int?  @map("user_id")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  email    String @unique
+  password String
+
+  name       String @unique
+  bornAt     String @map("born_at")
+  avatarPath String @default("/uploads/default-avatar.png") @map("avatar_path")
+
+  phone String @default("")
+
+  smsNotification   Boolean @default(false) @map("sms_notification")
+  emailNotification Boolean @default(false) @map("email_notification")
+
+  isAdmin Boolean @default(false) @map("is_admin")
+
+  addresses  Address[]
+  cards      Card[]
+  promocodes Promocode[]
+  orders     Order[]
+  favorites  Product[]
+}
+
+model ProductColor {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  name   String
+  hex    String
+  images String[]
+  left   Int
+
+  product    Product?    @relation(fields: [productId], references: [id])
+  productId  Int?        @map("product_id")
+  order_item OrderItem[]
+}
+
+model ProductDimension {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  dimension String
+  images    String[]
+  left      Int
+
+  product    Product?    @relation(fields: [productId], references: [id])
+  productId  Int?        @map("product_id")
+  order_item OrderItem[]
+}
+
+model ProductCharacteristic {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  material String
+  season   String
+  color    String
+  style    String
+  sleeve   String
+  country  String
+
+  product   Product? @relation(fields: [productId], references: [id])
+  productId Int      @unique @map("product_id")
+}
+
+model Product {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  name            String                 @unique
+  slug            String                 @unique
+  description     String
+  salePrice       Int                    @default(0) @map("sale_price")
+  price           Int
+  boughtTimes     Int                    @default(0) @map("bought_times")
+  sku             String
+  views           Int                    @default(0)
+  colors          ProductColor[]
+  dimensions      ProductDimension[]
+  orderItems      OrderItem[]
+  characteristics ProductCharacteristic?
+  images          String[]
+  tags            String[]
+  quantity        Int
+
+  user       User?     @relation(fields: [userId], references: [id])
+  userId     Int?      @map("user_id")
+  category   Category? @relation(fields: [categoryId], references: [id])
+  categoryId Int?      @map("category_id")
+  look       Look?     @relation(fields: [lookId], references: [id])
+  lookId     Int?      @map("look_id")
+}
+
+model Category {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  name String @unique
+  slug String @unique
+
+  products  Product[]
+  childrens Category[] @relation("ChildToParent")
+
+  parent   Category? @relation("ChildToParent", fields: [parentId], references: [id])
+  parentId Int?
+}
+
+enum EnumOrderStatus {
+  PENDING
+  PAYED
+  SHIPPED
+  DELIVERED
+}
+
+model Order {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  status EnumOrderStatus @default(PENDING)
+  total  Int
+
+  items OrderItem[]
+
+  user   User @relation(fields: [userId], references: [id])
+  userId Int  @map("user_id")
+}
+
+model OrderItem {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  quantity      Int
+  price         Int
+  estimatedDate String           @map("estimated_date")
+  color         ProductColor     @relation(fields: [productColorId], references: [id])
+  dimension     ProductDimension @relation(fields: [productDimensionId], references: [id])
+
+  order   Order? @relation(fields: [orderId], references: [id])
+  orderId Int?   @map("order_id")
+
+  product            Product? @relation(fields: [productId], references: [id])
+  productId          Int      @map("product_id")
+  productColorId     Int      @map("product_color_id")
+  productDimensionId Int      @map("product_dimension_id")
+
+  @@map("Order_item")
+}
+
+model Look {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  name     String    @unique()
+  slug     String    @unique()
+  views    Int       @default(0)
+  images   String[]
+  products Product[]
+
+  category   LookCategory? @relation(fields: [categoryId], references: [id])
+  categoryId Int?          @map("category_id")
+}
+
+model LookCategory {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  name  String @unique
+  slug  String @unique
+  looks Look[]
+
+  @@map("look_category")
+}
+
+model Post {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  name   String  @unique
+  slug   String  @unique
+  poster String
+  author String?
+  views  Int     @default(0)
+
+  category   PostCategory? @relation(fields: [categoryId], references: [id])
+  categoryId Int?          @map("category_id")
+}
+
+model PostCategory {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  name  String @unique
+  slug  String @unique
+  posts Post[]
+
+  @@map("post_category")
+}
